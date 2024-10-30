@@ -72,7 +72,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         SignInfo signInfo = signInfoMapper.selectOne(Wrappers.<SignInfo>lambdaQuery().eq(SignInfo::getUserId, userID).eq(SignInfo::getDate, date));
 
-        int today=Integer.parseInt(date.substring(date.lastIndexOf(':')+1));
+
+        int today=LocalDateTime.now().getDayOfMonth();
 
         if(signInfo==null)
         {

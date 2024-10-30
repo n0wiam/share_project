@@ -23,7 +23,7 @@ public class DelayMqConfig {
     public static final String DELAY_OUT_KEY="DELAY_OUT_KEY";
 
     private static final Integer ONE_DAY=86400000;
-    private static final Integer test=30000;
+    private static final Integer test=10000;
 
     //延迟交换机
     @Bean

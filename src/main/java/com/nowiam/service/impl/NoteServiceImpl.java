@@ -2,13 +2,16 @@ package com.nowiam.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
 import com.mysql.cj.util.StringUtils;
 import com.nowiam.config.DelayMqConfig;
+import com.nowiam.config.GsonConfig;
 import com.nowiam.mapper.NoteMapper;
 import com.nowiam.mapper.UserMapper;
 import com.nowiam.model.Result;
 import com.nowiam.model.dto.NoteDto;
 import com.nowiam.model.enums.NoteStatus;
+import com.nowiam.model.pojo.Message;
 import com.nowiam.model.pojo.Note;
 import com.nowiam.model.pojo.User;
 import com.nowiam.service.NoteService;
@@ -20,6 +23,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Date;
 
 @Service
@@ -33,6 +37,8 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     @Autowired
     RabbitTemplate rabbitTemplate;
 
+    @Autowired
+    Gson gson;
     @Override
     public Result submit(NoteDto noteDto) {
         Note note=new Note();
@@ -47,11 +53,13 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 
         if(note.getStatus().equals(NoteStatus.UNSUBMIT))
         {
+            noteMapper.insert(note);
+            String dto=gson.toJson(getMessage(note));
             //TODO:交给延时队列等待上传
             rabbitTemplate.convertAndSend(
                     DelayMqConfig.DELAY_EXCHANGE,
                     DelayMqConfig.DELAY_IN_KEY,
-                    "hello,delay"
+                    dto
             );
             return new Result<>().ok("ok");
         }
@@ -71,5 +79,22 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         Note note = noteMapper.selectOne(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getId, id));
         if(note!=null) noteMapper.deleteById(id);
         return new Result<>().ok("删除成功");
+    }
+
+    //构建延时消息体
+    private Message<Note> getMessage(Note note){
+        Message<Note> message=new Message<>();
+        message.setContent(note);
+
+        //获得唯一id
+        Long BEGIN_TIME=1704067200L;
+        Long current_time= LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
+        long time_stamp=current_time-BEGIN_TIME;
+        Long inc=stringRedisTemplate.opsForValue().increment("inc:unique_id");
+        if(inc==null) inc=0L;
+        long id=(time_stamp<<32)|(inc);
+
+        message.setMessageId(Long.toString(id));
+        return message;
     }
 }
