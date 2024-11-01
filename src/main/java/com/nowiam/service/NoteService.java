@@ -9,4 +9,6 @@ public interface NoteService extends IService<Note> {
     Result submit(NoteDto noteDto);
 
     Result deleteById(Integer id);
+
+    Result mylist(Integer status);
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowiam.mapper.FriendMapper">
+    <select id="myFriend" resultType="integer">
+        select friend_id from friend where user_id=#{userId} and status=1;
+    </select>
+    <select id="friendReq" resultType="integer">
+        select friend_id from friend where user_id=#{userId} and status=0;
+    </select>
+
+    <delete id="deleteFriend">
+        delete from friend where
+        (user_id=#{friendCon.userId} and friend_id=#{friendCon.friendId}) or
+        (user_id=#{friendCon.friendId} and friend_id=#{friendCon.userId})
+    </delete>
+</mapper>

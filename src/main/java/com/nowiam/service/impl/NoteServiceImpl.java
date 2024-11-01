@@ -3,6 +3,7 @@ package com.nowiam.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.mysql.cj.util.StringUtils;
 import com.nowiam.config.DelayMqConfig;
 import com.nowiam.config.GsonConfig;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements NoteService {
@@ -67,7 +69,10 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         {
 
             note.setCreateTime(new Date());
-            noteMapper.insert(note);
+            //noteMapper.insert(note);
+            //异步上传
+            new AsynSubmit(note,noteMapper).start();
+
             return new Result<>().ok("上传成功!");
         }
         return new Result<>().error(400,"上传错误");
@@ -79,6 +84,30 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         Note note = noteMapper.selectOne(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getId, id));
         if(note!=null) noteMapper.deleteById(id);
         return new Result<>().ok("删除成功");
+    }
+
+    @Override
+    public Result mylist(Integer status) {
+        if(status==null) return new Result<>().error(400,"状态错误");
+        Integer userId=ThreadLocalUtil.getUser().getId();
+//        //mybatisPlus版
+//        List<Note> list = noteMapper.selectList(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getStatus, status));
+//        //共享文件必发布
+//        if(status.equals(NoteStatus.SUBMIT))
+//        {
+//            List<Note> shareList=noteMapper.selectList(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getStatus,NoteStatus.PUBLIC));
+//            list.addAll(shareList);
+//        }
+//        这里需要用到自动缓存故不用mp
+        String str = stringRedisTemplate.opsForValue().get("List:" + userId + ":" + status);
+        if(str!=null) {
+            List<Note> cache = gson.fromJson(str, new TypeToken<List<Note>>(){}.getType());
+            return new Result<>().ok(cache);
+        }
+
+        //获取缓存失败,开始查询
+        List<Note> list = noteMapper.myList(userId,status);
+        return new Result<>().ok(list);
     }
 
     //构建延时消息体
@@ -96,5 +125,20 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 
         message.setMessageId(Long.toString(id));
         return message;
+    }
+
+    private static class AsynSubmit extends Thread{
+        private Note note;
+        private NoteMapper noteMapper;
+        private AsynSubmit(){}
+
+        public AsynSubmit(Note note,NoteMapper noteMapper){
+            this.note=note;
+            this.noteMapper=noteMapper;
+        }
+        @Override
+        public void run(){
+            noteMapper.insert(note);
+        }
     }
 }
