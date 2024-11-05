@@ -1,17 +1,14 @@
 package com.nowiam.aspect;
 
 import com.google.gson.Gson;
-import com.nowiam.model.pojo.Note;
-import org.aspectj.lang.JoinPoint;
-import org.aspectj.lang.annotation.AfterReturning;
-import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Before;
-import org.aspectj.lang.annotation.Pointcut;
+import com.nowiam.annotation.AutoCaches;
+import com.nowiam.util.ThreadLocalUtil;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 
 @Component
 @Aspect
@@ -20,29 +17,32 @@ public class AutoCacheAspect {
     StringRedisTemplate stringRedisTemplate;
     @Autowired
     Gson gson;
-    @Pointcut("execution(* com.nowiam.mapper.*.*(..)) && @annotation(com.nowiam.annotation.AutoCache)")
-    public void add(){};
+    @Around(value = "execution(* com.nowiam.*.*.*(..)) && @annotation(autoCaches)")
+    public Object fun(ProceedingJoinPoint pjp,AutoCaches autoCaches) throws Throwable {
+        String type=autoCaches.value();
+        int isMore=autoCaches.ops();
+        Integer userId= ThreadLocalUtil.getUser().getId();
+        String key=type+":"+userId;
 
-    @Pointcut("execution(* com.nowiam.mapper.*.*(..)) && @annotation(com.nowiam.annotation.ClearCache)")
-    public void clear(){};
-
-    @AfterReturning(value = "add()",returning = "result")
-    public void fun(JoinPoint joinPoint,Object result){
-        Integer userId= (Integer) joinPoint.getArgs()[0];
-        Integer status= (Integer) joinPoint.getArgs()[1];
-
-        List<Note> res= (List<Note>) result;
-
-        String key="List:"+userId+":"+status;
-
-        String mes=gson.toJson(res);
-
-        stringRedisTemplate.opsForValue().set(key,mes);
+        if(isMore!=-1)
+        {
+            try {
+                Integer status= (Integer) (pjp.getArgs()[isMore]);
+                key+=":"+status;
+            }catch (Exception e)
+            {
+                throw new Throwable("注解错误");
+            }
+        }
+        Object result=null;
+        try {
+            result = pjp.proceed();
+            System.out.println("尝试自动缓存:"+key);
+        } catch (Throwable e) {
+            System.out.println("异常通知");
+        }
+        stringRedisTemplate.opsForValue().set(key,gson.toJson(result));
+        return result;
     }
-
-//    @Before("clear()")
-//    public void fun2(JoinPoint joinPoint){
-//
-//    }
 
 }

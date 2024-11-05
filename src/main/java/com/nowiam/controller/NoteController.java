@@ -28,4 +28,9 @@ public class NoteController {
     public Result mylist(@PathVariable("status") Integer status){
         return noteService.mylist(status);
     }
+
+    @GetMapping("/share")
+    public Result shareList(){
+        return noteService.shareList();
+    }
 }

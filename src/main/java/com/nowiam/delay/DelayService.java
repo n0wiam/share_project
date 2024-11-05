@@ -10,6 +10,7 @@ import com.nowiam.model.pojo.Message;
 import com.nowiam.model.pojo.Note;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Type;
@@ -23,6 +24,8 @@ public class DelayService {
     NoteMapper noteMapper;
     @Autowired
     MessageMapper messageMapper;
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
     @RabbitListener(queues = DelayMqConfig.DELAY_TARGET_QUEUE)
     public void delaySubmit(String message){
         //解析消息体
@@ -36,5 +39,13 @@ public class DelayService {
         note.setStatus(NoteStatus.PUBLIC);
         noteMapper.updateById(note);
         messageMapper.insert(res.getMessageId());
+
+        clearCache("NOTE_LIST:"+note.getAuthor()+":"+NoteStatus.UNSUBMIT);
+        clearCache("NOTE_LIST:"+note.getAuthor()+":"+NoteStatus.PUBLIC);
+    }
+
+    private void clearCache(String key)
+    {
+        stringRedisTemplate.opsForValue().getOperations().delete(key);
     }
 }

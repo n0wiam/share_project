@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import com.mysql.cj.util.StringUtils;
 import com.nowiam.config.DelayMqConfig;
 import com.nowiam.config.GsonConfig;
+import com.nowiam.mapper.FriendMapper;
 import com.nowiam.mapper.NoteMapper;
 import com.nowiam.mapper.UserMapper;
 import com.nowiam.model.Result;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -38,6 +40,8 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     StringRedisTemplate stringRedisTemplate;
     @Autowired
     RabbitTemplate rabbitTemplate;
+    @Autowired
+    FriendMapper friendMapper;
 
     @Autowired
     Gson gson;
@@ -45,6 +49,11 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     public Result submit(NoteDto noteDto) {
         Note note=new Note();
         BeanUtils.copyProperties(noteDto,note);
+        //清缓存
+        Integer userId=ThreadLocalUtil.getUser().getId();
+        clearCache("NOTE_LIST:"+userId+":"+note.getStatus());
+
+        //System.out.println("NOTE_LIST:"+userId+":"+note.getStatus());
 
         if(StringUtils.isEmptyOrWhitespaceOnly(note.getContent())||StringUtils.isEmptyOrWhitespaceOnly(note.getType()))
         {
@@ -72,7 +81,6 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             //noteMapper.insert(note);
             //异步上传
             new AsynSubmit(note,noteMapper).start();
-
             return new Result<>().ok("上传成功!");
         }
         return new Result<>().error(400,"上传错误");
@@ -82,7 +90,10 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     public Result deleteById(Integer id) {
         Integer userId = ThreadLocalUtil.getUser().getId();
         Note note = noteMapper.selectOne(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getId, id));
-        if(note!=null) noteMapper.deleteById(id);
+        if(note!=null){
+            clearCache("NOTE_LIST:"+userId+":"+note.getStatus());
+            noteMapper.deleteById(id);
+        }
         return new Result<>().ok("删除成功");
     }
 
@@ -99,7 +110,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 //            list.addAll(shareList);
 //        }
 //        这里需要用到自动缓存故不用mp
-        String str = stringRedisTemplate.opsForValue().get("List:" + userId + ":" + status);
+        String str = stringRedisTemplate.opsForValue().get("NOTE_LIST:" + userId + ":" + status);
         if(str!=null) {
             List<Note> cache = gson.fromJson(str, new TypeToken<List<Note>>(){}.getType());
             return new Result<>().ok(cache);
@@ -109,6 +120,19 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         List<Note> list = noteMapper.myList(userId,status);
         return new Result<>().ok(list);
     }
+
+    @Override
+    public Result shareList() {
+        Integer userId=ThreadLocalUtil.getUser().getId();
+        List<Integer> friends=friendMapper.myFriend(userId);
+        List<Note> shareNotes=new ArrayList<>();
+        for(Integer i:friends)
+        {
+            shareNotes.addAll(noteMapper.selectList(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor,i).eq(Note::getStatus,NoteStatus.PUBLIC)));
+        }
+        return new Result<>().ok(shareNotes);
+    }
+
 
     //构建延时消息体
     private Message<Note> getMessage(Note note){
@@ -140,5 +164,10 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         public void run(){
             noteMapper.insert(note);
         }
+    }
+
+    private void clearCache(String key)
+    {
+        stringRedisTemplate.opsForValue().getOperations().delete(key);
     }
 }

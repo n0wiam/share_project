@@ -11,4 +11,6 @@ public interface NoteService extends IService<Note> {
     Result deleteById(Integer id);
 
     Result mylist(Integer status);
+
+    Result shareList();
 }

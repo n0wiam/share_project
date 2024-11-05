@@ -1,6 +1,8 @@
 package com.nowiam.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.nowiam.annotation.AutoCache;
+import com.nowiam.annotation.AutoCaches;
 import com.nowiam.model.pojo.FriendCon;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

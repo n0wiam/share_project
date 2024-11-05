@@ -1,15 +1,18 @@
 package com.nowiam.service;
 
+import com.nowiam.annotation.AutoCaches;
 import com.nowiam.model.Result;
+import com.nowiam.model.pojo.User;
+
+import java.util.List;
 
 public interface FriendService {
-    Result myFriend();
+    List<User> myFriend();
+    List<User> friendReq();
 
-    Result friendReq();
+    String friendAdd(Integer friendId);
 
-    Result friendAdd(Integer friendId);
+    String friendReply(Integer friendId);
 
-    Result friendReply(Integer friendId);
-
-    Result friendDel(Integer friendId);
+    String friendDel(Integer friendId);
 }
