@@ -2,6 +2,7 @@ package com.nowiam.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
 import com.nowiam.mapper.SignInfoMapper;
 import com.nowiam.mapper.UserMapper;
 import com.nowiam.model.Result;
@@ -12,6 +13,7 @@ import com.nowiam.service.UserService;
 import com.nowiam.util.ThreadLocalUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
@@ -27,6 +31,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     SignInfoMapper signInfoMapper;
+
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    Gson gson;
 
     private final Integer AWARD_DAYS=5;
     @Override
@@ -39,12 +48,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }catch (Exception e) {
             return new Result<>().error(400,"用户已存在");
         }
-        //user的id由mybatisplus自动回填
-        //String token=AppJwtUtil.getToken(user.getId().longValue());
-        //Map map=new HashMap<>();
-        //map.put("token",token);
-        //return new Result<>().ok(map);
-        return new Result<>().ok(1);
+        return new Result<>().ok("注册成功");
     }
 
     @Override
@@ -54,11 +58,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if(user==null) return new Result<>().error(400,"用户不存在");
         if(user.getPassword().equals(loginDto.getPassword()))
         {
-//            String token= AppJwtUtil.getToken(user.getId().longValue());
-//            Map map=new HashMap<>();
-//            map.put("token",token);
-//            return new Result<>().ok(map);
-            return new Result<>().ok(1);
+            user.setPassword("");
+            String token= UUID.randomUUID().toString();
+            stringRedisTemplate.opsForValue().set("USER:"+token,gson.toJson(user),30, TimeUnit.MINUTES);
+            return new Result<>().ok(token);
         }
         return new Result<>().error(400,"登陆失败");
     }

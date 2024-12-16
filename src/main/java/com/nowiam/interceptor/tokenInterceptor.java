@@ -2,10 +2,14 @@ package com.nowiam.interceptor;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.nowiam.model.Result;
 import com.nowiam.model.pojo.User;
 import com.nowiam.util.ThreadLocalUtil;
 import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -14,16 +18,22 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
 
 public class tokenInterceptor implements HandlerInterceptor {
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    Gson gson;
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if(request.getRequestURI().contains("/login")||request.getRequestURI().contains("/register")){
             //放行
             return true;
         }
-//        String method = request.getMethod();
-//        if("OPTIONS".equals(method)) return true;
+        //String hello = stringRedisTemplate.opsForValue().get("hello");
+        //System.out.println("----------------------redis-----------------------------:"+hello);
+
         //3.获取token
         String token = request.getHeader("token");
         //4.判断token是否存在
@@ -31,30 +41,17 @@ public class tokenInterceptor implements HandlerInterceptor {
             returnNoLogin(response);
             return false;
         }
-//        Claims claimsBody =null;
-//        try{
-//            claimsBody = AppJwtUtil.getClaimsBody(token);
-//            //是否是过期
-//            int result = AppJwtUtil.verifyToken(claimsBody);
-//            if(result == 1 || result  == 2){
-//                returnNoLogin(response);
-//                return false;
-//            }
-//        }catch (Exception e)
-//        {
-//            returnNoLogin(response);
-//            return false;
-//        }
 
-        //获得token解析后中的用户信息
-        //Integer userId = (Integer) claimsBody.get("id");
-        Integer userId=Integer.parseInt(token);
-        //if(userId!=null)
+        String str = stringRedisTemplate.opsForValue().get("USER:"+token);
+        if(str==null)
         {
-            User user=new User();
-            user.setId(userId);
-            ThreadLocalUtil.setUser(user);
+            returnNoLogin(response);
+            return false;
         }
+        //stringRedisTemplate.opsForValue().set("USER:"+token,str,30, TimeUnit.MINUTES);
+        stringRedisTemplate.expire("USER:"+token,30, TimeUnit.MINUTES);
+        User user = gson.fromJson(str, new TypeToken<User>() {}.getType());
+        ThreadLocalUtil.setUser(user);
         return true;
     }
 

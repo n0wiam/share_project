@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.TimeUnit;
+
 
 @Component
 @Aspect
@@ -41,7 +43,7 @@ public class AutoCacheAspect {
         } catch (Throwable e) {
             System.out.println("异常通知");
         }
-        stringRedisTemplate.opsForValue().set(key,gson.toJson(result));
+        stringRedisTemplate.opsForValue().set(key,gson.toJson(result),5, TimeUnit.SECONDS);
         return result;
     }
 

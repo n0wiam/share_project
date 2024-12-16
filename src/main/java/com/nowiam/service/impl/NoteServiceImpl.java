@@ -66,7 +66,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         {
             noteMapper.insert(note);
             String dto=gson.toJson(getMessage(note));
-            //TODO:交给延时队列等待上传
+            //交给延时队列等待上传
             rabbitTemplate.convertAndSend(
                     DelayMqConfig.DELAY_EXCHANGE,
                     DelayMqConfig.DELAY_IN_KEY,
@@ -125,11 +125,17 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
     public Result shareList() {
         Integer userId=ThreadLocalUtil.getUser().getId();
         List<Integer> friends=friendMapper.myFriend(userId);
-        List<Note> shareNotes=new ArrayList<>();
-        for(Integer i:friends)
-        {
-            shareNotes.addAll(noteMapper.selectList(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor,i).eq(Note::getStatus,NoteStatus.PUBLIC)));
+//        List<Note> shareNotes=new ArrayList<>();
+//        for(Integer i:friends)
+//        {
+//            shareNotes.addAll(noteMapper.selectList(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor,i).eq(Note::getStatus,NoteStatus.PUBLIC)));
+//        }
+        String str = stringRedisTemplate.opsForValue().get("SHARE_LIST:" + userId);
+        if(str!=null) {
+            List<Note> cache = gson.fromJson(str, new TypeToken<List<Note>>(){}.getType());
+            return new Result<>().ok(cache);
         }
+        List<Note> shareNotes=noteMapper.shareList(friends);
         return new Result<>().ok(shareNotes);
     }
 

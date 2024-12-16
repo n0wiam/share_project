@@ -13,4 +13,12 @@
     <select id="myList" resultMap="noteResult">
         select * from note where author=#{userId} and status=#{status};
     </select>
+
+    <select id="shareList" resultMap="noteResult">
+        select * from note where author in
+        <foreach item="id" collection="list" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        and status=2;
+    </select>
 </mapper>
