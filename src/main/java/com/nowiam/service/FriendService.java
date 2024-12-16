@@ -1,7 +1,5 @@
 package com.nowiam.service;
 
-import com.nowiam.annotation.AutoCaches;
-import com.nowiam.model.Result;
 import com.nowiam.model.pojo.User;
 
 import java.util.List;

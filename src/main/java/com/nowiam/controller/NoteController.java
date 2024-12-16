@@ -4,6 +4,9 @@ import com.nowiam.model.Result;
 import com.nowiam.model.dto.NoteDto;
 import com.nowiam.service.NoteService;
 import org.apache.ibatis.annotations.Param;
+import org.apache.rocketmq.client.exception.MQBrokerException;
+import org.apache.rocketmq.client.exception.MQClientException;
+import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +18,7 @@ public class NoteController {
     NoteService noteService;
 
     @PostMapping("/submit")
-    public Result submit(@RequestBody NoteDto noteDto){
+    public Result submit(@RequestBody NoteDto noteDto) throws MQBrokerException, RemotingException, InterruptedException, MQClientException {
         return noteService.submit(noteDto);
     }
 

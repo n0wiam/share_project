@@ -2,7 +2,7 @@ package com.nowiam.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.google.gson.Gson;
-import com.nowiam.annotation.AutoCaches;
+import com.nowiam.annotation.AutoCache;
 import com.nowiam.mapper.FriendMapper;
 import com.nowiam.mapper.UserMapper;
 import com.nowiam.model.pojo.FriendCon;
@@ -28,7 +28,7 @@ public class FriendServiceImpl implements FriendService {
     Gson gson;
 
     @Override
-    @AutoCaches("FRIEND_LIST:ACC")
+    @AutoCache("FRIEND_LIST:ACC")
     public List<User> myFriend() {
         Integer userId= ThreadLocalUtil.getUser().getId();
 
@@ -40,7 +40,7 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
-    @AutoCaches("FRIEND_LIST:REQ")
+    @AutoCache("FRIEND_LIST:REQ")
     public List<User> friendReq() {
         Integer userId= ThreadLocalUtil.getUser().getId();
 

@@ -1,6 +1,6 @@
 package com.nowiam.model.pojo;
 
-public class Message<T> {
+public class Mes<T> {
     private String messageId;
     private T content;
     //get&set

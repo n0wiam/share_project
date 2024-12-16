@@ -27,16 +27,22 @@ public class tokenInterceptor implements HandlerInterceptor {
     Gson gson;
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+
+        //获取token
+        String token = request.getHeader("token");
+
         if(request.getRequestURI().contains("/login")||request.getRequestURI().contains("/register")){
             //放行
+            if(token!=null)
+            {
+                stringRedisTemplate.delete("USER:"+token);
+            }
             return true;
         }
         //String hello = stringRedisTemplate.opsForValue().get("hello");
         //System.out.println("----------------------redis-----------------------------:"+hello);
 
-        //3.获取token
-        String token = request.getHeader("token");
-        //4.判断token是否存在
+        //判断token是否存在
         if(StringUtils.isBlank(token)){
             returnNoLogin(response);
             return false;

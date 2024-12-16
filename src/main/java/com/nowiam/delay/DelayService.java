@@ -2,13 +2,13 @@ package com.nowiam.delay;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.nowiam.config.DelayMqConfig;
 import com.nowiam.mapper.MessageMapper;
 import com.nowiam.mapper.NoteMapper;
 import com.nowiam.model.enums.NoteStatus;
-import com.nowiam.model.pojo.Message;
+import com.nowiam.model.pojo.Mes;
 import com.nowiam.model.pojo.Note;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
+import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -17,20 +17,21 @@ import java.lang.reflect.Type;
 import java.util.Date;
 
 @Component
-public class DelayService {
-    @Autowired
-    Gson gson;
+@RocketMQMessageListener(consumerGroup ="ShareConsumerGroup",topic = "DelaySubmit")
+public class DelayService implements RocketMQListener<String> {
     @Autowired
     NoteMapper noteMapper;
     @Autowired
     MessageMapper messageMapper;
     @Autowired
     StringRedisTemplate stringRedisTemplate;
-    @RabbitListener(queues = DelayMqConfig.DELAY_TARGET_QUEUE)
-    public void delaySubmit(String message){
-        //解析消息体
-        Type typeToken=new TypeToken<Message<Note>>(){}.getType();
-        Message<Note> res = gson.fromJson(message, typeToken);
+    @Autowired
+    Gson gson;
+    @Override
+    public void onMessage(String mes) {
+        Type typeToken=new TypeToken<Mes<Note>>(){}.getType();
+        System.out.println("延迟提交："+mes);
+        Mes<Note> res = gson.fromJson(mes, typeToken);
         Note note=res.getContent();
         //处理过的消息放行
         if(messageMapper.check(res.getMessageId())>0) return ;
@@ -43,7 +44,6 @@ public class DelayService {
         clearCache("NOTE_LIST:"+note.getAuthor()+":"+NoteStatus.UNSUBMIT);
         clearCache("NOTE_LIST:"+note.getAuthor()+":"+NoteStatus.PUBLIC);
     }
-
     private void clearCache(String key)
     {
         stringRedisTemplate.opsForValue().getOperations().delete(key);

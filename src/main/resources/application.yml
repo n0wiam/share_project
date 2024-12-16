@@ -32,6 +32,12 @@ spring:
     username: rabbitmq
     password: 1234
     virtualHost: /
+rocketmq:
+  name-server: 192.168.200.123:9876
+  producer:
+    group: ShareProducerGroup
+  consumer:
+    group: ShareConsumerGroup
 # 设置Mapper接口所对应的XML文件位置，如果你在Mapper接口中有自定义方法，需要进行该配置
 mybatis-plus:
   mapper-locations: classpath*:mapper/*.xml
