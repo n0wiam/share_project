@@ -27,13 +27,27 @@ public class NoteController {
         return noteService.deleteById(id);
     }
 
-    @GetMapping("/list/{status}")
-    public Result mylist(@PathVariable("status") Integer status){
-        return noteService.mylist(status);
-    }
-
     @GetMapping("/share")
     public Result shareList(){
         return noteService.shareList();
+    }
+
+    @GetMapping("/list")
+    public Result mylist(){
+        return noteService.mylist();
+    }
+    @GetMapping("/subscribe/{id}")
+    public Result subscribe(@PathVariable("id") Integer id){
+        return noteService.subscirbe(id);
+    }
+
+    @GetMapping("/unsubscribe/{id}")
+    public Result unsubscribe(@PathVariable("id") Integer id){
+        return noteService.unsubscirbe(id);
+    }
+
+    @GetMapping("/sublist")
+    public Result sublist(){
+        return noteService.sublist();
     }
 }

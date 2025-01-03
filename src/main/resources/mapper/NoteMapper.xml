@@ -3,22 +3,49 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.nowiam.mapper.NoteMapper">
-    <resultMap id="noteResult" type="com.nowiam.model.pojo.Note">
+    <resultMap id="noteVoResult" type="com.nowiam.model.vo.NoteVo">
         <id property="id" column="id" jdbcType="INTEGER"/>
-        <result column="author" property="author"/>
         <result column="content" property="content"/>
         <result column="type" property="type"/>
         <result column="create_time" property="createTime"/>
+        <result column="image" property="image"/>
+        <result column="name" property="authorName"/>
     </resultMap>
-    <select id="myList" resultMap="noteResult">
-        select * from note where author=#{userId} and status=#{status};
+    <select id="myList" resultMap="noteVoResult">
+        select note.id as id,
+               note.type as type,
+               note.content as content,
+               note.create_time as create_time,
+               user.name as name,
+               user.image as image
+        from note left join user on note.author=user.id where note.author=#{userId} order by note.create_time desc;
     </select>
 
-    <select id="shareList" resultMap="noteResult">
-        select * from note where author in
+    <select id="shareList" resultMap="noteVoResult">
+        select note.id as id,
+        note.type as type,
+        note.content as content,
+        note.create_time as create_time,
+        user.name as name,
+        user.image as image
+        from note left join user on note.author=user.id where note.author in
         <foreach item="id" collection="list" open="(" separator="," close=")">
             #{id}
         </foreach>
-        and status=2;
+        and status=2 order by note.create_time desc;
+    </select>
+
+    <select id="sublist" resultMap="noteVoResult">
+        select note.id as id,
+               note.type as type,
+               note.content as content,
+               note.create_time as create_time,
+               user.name as name,
+               user.image as image
+        from note_con
+                 left join note on note_con.note_id=note.id
+                 left join user on note.author=user.id
+        where note_con.user_id=#{id}
+        order by note.create_time desc;
     </select>
 </mapper>

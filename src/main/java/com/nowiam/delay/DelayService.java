@@ -3,10 +3,12 @@ package com.nowiam.delay;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.nowiam.mapper.MessageMapper;
+import com.nowiam.mapper.NoteConMapper;
 import com.nowiam.mapper.NoteMapper;
 import com.nowiam.model.enums.NoteStatus;
 import com.nowiam.model.pojo.Mes;
 import com.nowiam.model.pojo.Note;
+import com.nowiam.model.pojo.NoteCon;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,8 @@ import java.util.Date;
 public class DelayService implements RocketMQListener<String> {
     @Autowired
     NoteMapper noteMapper;
+    @Autowired
+    NoteConMapper noteConMapper;
     @Autowired
     MessageMapper messageMapper;
     @Autowired
@@ -38,11 +42,18 @@ public class DelayService implements RocketMQListener<String> {
         //System.out.println(note.getContent()+":"+note.getId());
         note.setCreateTime(new Date());
         note.setStatus(NoteStatus.PUBLIC);
-        noteMapper.updateById(note);
-        messageMapper.insert(res.getMessageId());
+        if(noteMapper.selectById(note.getId())!=null)
+        {
+            noteMapper.updateById(note);
+            messageMapper.insert(res.getMessageId());
+            NoteCon noteCon=new NoteCon();
+            noteCon.setNoteId(note.getId());
+            noteCon.setUserId(note.getAuthor());
+            noteConMapper.insert(noteCon);
+        }
 
-        clearCache("NOTE_LIST:"+note.getAuthor()+":"+NoteStatus.UNSUBMIT);
-        clearCache("NOTE_LIST:"+note.getAuthor()+":"+NoteStatus.PUBLIC);
+        clearCache("NOTE_LIST:"+note.getAuthor());
+        clearCache("NOTE_LIST:"+note.getAuthor());
     }
     private void clearCache(String key)
     {

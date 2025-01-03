@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import com.mysql.cj.util.StringUtils;
 import com.nowiam.delay.DelayProducer;
 import com.nowiam.mapper.FriendMapper;
+import com.nowiam.mapper.NoteConMapper;
 import com.nowiam.mapper.NoteMapper;
 import com.nowiam.mapper.UserMapper;
 import com.nowiam.model.Result;
@@ -14,6 +15,8 @@ import com.nowiam.model.dto.NoteDto;
 import com.nowiam.model.enums.NoteStatus;
 import com.nowiam.model.pojo.Mes;
 import com.nowiam.model.pojo.Note;
+import com.nowiam.model.pojo.NoteCon;
+import com.nowiam.model.vo.NoteVo;
 import com.nowiam.service.NoteService;
 import com.nowiam.util.ThreadLocalUtil;
 import org.apache.rocketmq.client.exception.MQBrokerException;
@@ -33,6 +36,8 @@ import java.util.List;
 public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements NoteService {
     @Autowired
     NoteMapper noteMapper;
+    @Autowired
+    NoteConMapper noteConMapper;
     @Autowired
     UserMapper userMapper;
     @Autowired
@@ -55,7 +60,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         BeanUtils.copyProperties(noteDto,note);
         //清缓存
         Integer userId=ThreadLocalUtil.getUser().getId();
-        clearCache("NOTE_LIST:"+userId+":"+note.getStatus());
+        clearCache("NOTE_LIST:"+userId);
 
 
         if(StringUtils.isEmptyOrWhitespaceOnly(note.getContent())||StringUtils.isEmptyOrWhitespaceOnly(note.getType()))
@@ -79,7 +84,7 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
             note.setCreateTime(new Date());
             //noteMapper.insert(note);
             //异步上传
-            new AsynSubmit(note,noteMapper).start();
+            new AsynSubmit(note,noteMapper,noteConMapper).start();
             return new Result<>().ok("上传成功!");
         }
         return new Result<>().error(400,"上传错误");
@@ -90,15 +95,16 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
         Integer userId = ThreadLocalUtil.getUser().getId();
         Note note = noteMapper.selectOne(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getId, id));
         if(note!=null){
-            clearCache("NOTE_LIST:"+userId+":"+note.getStatus());
+            clearCache("NOTE_LIST:"+userId);
             noteMapper.deleteById(id);
         }
+        noteConMapper.delete(Wrappers.<NoteCon>lambdaQuery().eq(NoteCon::getNoteId,id));
         return new Result<>().ok("删除成功");
     }
 
     @Override
-    public Result mylist(Integer status) {
-        if(status==null) return new Result<>().error(400,"状态错误");
+    public Result mylist() {
+        //if(status==null) return new Result<>().error(400,"状态错误");
         Integer userId=ThreadLocalUtil.getUser().getId();
 //        //mybatisPlus版
 //        List<Note> list = noteMapper.selectList(Wrappers.<Note>lambdaQuery().eq(Note::getAuthor, userId).eq(Note::getStatus, status));
@@ -109,14 +115,14 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 //            list.addAll(shareList);
 //        }
 //        这里需要用到自动缓存故不用mp
-        String str = stringRedisTemplate.opsForValue().get("NOTE_LIST:" + userId + ":" + status);
+        String str = stringRedisTemplate.opsForValue().get("NOTE_LIST:");
         if(str!=null) {
-            List<Note> cache = gson.fromJson(str, new TypeToken<List<Note>>(){}.getType());
+            List<NoteVo> cache = gson.fromJson(str, new TypeToken<List<NoteVo>>(){}.getType());
             return new Result<>().ok(cache);
         }
 
         //获取缓存失败,开始查询
-        List<Note> list = noteMapper.myList(userId,status);
+        List<NoteVo> list = noteMapper.myList(userId);
         return new Result<>().ok(list);
     }
 
@@ -131,26 +137,68 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements No
 //        }
         String str = stringRedisTemplate.opsForValue().get("SHARE_LIST:" + userId);
         if(str!=null) {
-            List<Note> cache = gson.fromJson(str, new TypeToken<List<Note>>(){}.getType());
+            List<NoteVo> cache = gson.fromJson(str, new TypeToken<List<NoteVo>>(){}.getType());
             return new Result<>().ok(cache);
         }
-        List<Note> shareNotes=noteMapper.shareList(friends);
+        List<NoteVo> shareNotes=noteMapper.shareList(friends);
         return new Result<>().ok(shareNotes);
+    }
+
+    @Override
+    public Result subscirbe(Integer id) {
+        Note note=noteMapper.selectById(id);
+        if(note==null||note.getStatus()!=NoteStatus.PUBLIC) return new Result<>().error(400,"订阅失败");
+        NoteCon noteCon=new NoteCon();
+        noteCon.setUserId(ThreadLocalUtil.getUser().getId());
+        noteCon.setNoteId(id);
+        if(noteConMapper.selectOne(Wrappers.<NoteCon>lambdaQuery().eq(NoteCon::getUserId,noteCon.getUserId()).eq(NoteCon::getNoteId,noteCon.getNoteId()))!=null)
+        {
+            return new Result<>().ok("已订阅");
+        }
+        try{
+            noteConMapper.insert(noteCon);
+        }catch (Exception e)
+        {
+            return new Result<>().error(400,"订阅失败");
+        }
+        return new Result<>().ok("订阅成功");
+    }
+
+    @Override
+    public Result unsubscirbe(Integer id) {
+        NoteCon noteCon=new NoteCon();
+        noteCon.setUserId(ThreadLocalUtil.getUser().getId());
+        noteCon.setNoteId(id);
+        noteConMapper.delete(Wrappers.<NoteCon>lambdaQuery().eq(NoteCon::getUserId,noteCon.getUserId()).eq(NoteCon::getNoteId,noteCon.getNoteId()));
+        return new Result<>().ok("取消订阅成功");
+    }
+
+    @Override
+    public Result sublist() {
+        List<NoteVo> list=noteMapper.sublist(ThreadLocalUtil.getUser().getId());
+        //System.out.println(list);
+        return new Result<>().ok(list);
     }
 
 
     private static class AsynSubmit extends Thread{
         private Note note;
         private NoteMapper noteMapper;
+        private NoteConMapper noteConMapper;
         private AsynSubmit(){}
 
-        public AsynSubmit(Note note,NoteMapper noteMapper){
+        public AsynSubmit(Note note,NoteMapper noteMapper,NoteConMapper noteConMapper){
             this.note=note;
             this.noteMapper=noteMapper;
+            this.noteConMapper=noteConMapper;
         }
         @Override
         public void run(){
             noteMapper.insert(note);
+            NoteCon noteCon=new NoteCon();
+            noteCon.setNoteId(note.getId());
+            noteCon.setUserId(note.getAuthor());
+            noteConMapper.insert(noteCon);
         }
     }
 

@@ -39,6 +39,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private final Integer AWARD_DAYS=5;
     @Override
+    public Result info() {
+        return new Result<>().ok(userMapper.selectById(ThreadLocalUtil.getUser().getId()));
+    }
+    @Override
     public Result register(LoginDto loginDto) {
         User user=new User();
         user.setCoin(0);
