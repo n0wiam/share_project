@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowiam.mapper.ImageMapper">
+    <update id="alert">
+        update user set user.image=(select url from image where image.id=#{id}) where user.id=#{userId}
+    </update>
+
+    <select id="show" resultType="com.nowiam.model.pojo.Image">
+        select * from image
+    </select>
+</mapper>

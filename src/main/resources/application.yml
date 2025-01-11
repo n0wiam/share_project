@@ -1,0 +1,52 @@
+server:
+  port: 50000
+spring:
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.200.123:3306/share_project?allowPublicKeyRetrieval=true&useSSL=false&useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+    username: root
+    password: 1234
+  redis:
+    host: 192.168.200.123
+    port: 6379
+#  redis:
+#    sentinel:
+#      master: mymaster
+#      nodes:
+#        - 192.168.200.100:26381
+#        - 192.168.200.100:26382
+#   database: 0
+#    host: 192.168.200.100
+#    port: 6379
+#    timeout: 1800000  # 连接超时时间（毫秒）
+#    lettuce:
+#      pool:
+#        max-active: 20  # 连接池最大连接数（使用负值表示没有限制）
+#        max-wait: -1  # 最大阻塞等待时间（负数表示没有限制）
+#        max-idle: 5  # 连接池中最大空闲连接
+#        min-idle: 0  # 连接池中最小空闲连接
+#  rabbitmq:
+#    host: 192.168.200.123
+#    port: 5672
+#    username: rabbitmq
+#    password: 1234
+#    virtualHost: /
+rocketmq:
+  name-server: 192.168.200.123:9876
+  producer:
+    group: ShareProducerGroup
+  consumer:
+    group: ShareConsumerGroup
+# 设置Mapper接口所对应的XML文件位置，如果你在Mapper接口中有自定义方法，需要进行该配置
+mybatis-plus:
+  mapper-locations: classpath*:mapper/*.xml
+  # 设置别名包扫描路径，通过该属性可以给包中的类注册别名
+  type-aliases-package: org.nowiam.model.pojo
+#minio:
+#  access-key: "minioadmin"
+#  secret-key: "minioadmin"
+#  endpoint: "http://192.168.200.100:9001"

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowiam.mapper.MessageMapper">
+    <select id="check" resultType="long">
+        select count(*) from share_project.message_list where message_list.message_id=#{id};
+    </select>
+
+    <insert id="insert">
+        insert into share_project.message_list(message_id) values (#{id});
+    </insert>
+</mapper>
